@@ -49,6 +49,7 @@ import android.accounts.AccountManager;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -64,6 +65,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.SpannableString;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Patterns;
@@ -216,6 +218,7 @@ public class OneSignal {
 
       // START: Init validation
       try {
+         //noinspection ResultOfMethodCallIgnored
          UUID.fromString(oneSignalAppId);
       } catch (Throwable t) {
          Log(LOG_LEVEL.FATAL, "OneSignal AppId format is invalid.\nExample: 'b2f7f966-d8cc-11e4-bed1-df8f05be55ba'\n", t);
@@ -227,6 +230,7 @@ public class OneSignal {
 
       if (deviceType == 1) {
          try {
+            //noinspection ResultOfMethodCallIgnored
             Double.parseDouble(googleProjectNumber);
             if (googleProjectNumber.length() < 8 || googleProjectNumber.length() > 16)
                throw new IllegalArgumentException("Google Project number (Sender_ID) should be a 10 to 14 digit number in length.");
@@ -270,6 +274,39 @@ public class OneSignal {
             fireCallbackForOpenedNotifications();
 
          return;
+      }
+      else {
+         // TODO: Restore unhandled notifications.
+         // TODO: Run this in a new Thread.
+
+         OneSignalDbHelper dbHelper = new OneSignalDbHelper(context);
+         SQLiteDatabase writableDb = dbHelper.getWritableDatabase();
+
+         String[] retColumn = { NotificationTable.COLUMN_NAME_ANDROID_NOTIFICATION_ID,
+                                NotificationTable.COLUMN_NAME_FULL_DATA };
+
+         Cursor cursor = writableDb.query(
+             NotificationTable.TABLE_NAME,
+             retColumn,
+                NotificationTable.COLUMN_NAME_DISMISSED + " = 0 AND " +
+                NotificationTable.COLUMN_NAME_OPENED + " = 0",
+             null,
+             null,                                                    // group by
+             null,                                                    // filter by row groups
+             NotificationTable._ID + " DESC"                          // sort order, new to old
+         );
+
+         String firstFullData = null;
+         Collection<SpannableString> summeryList = null;
+
+         if (cursor.moveToFirst()) {
+            do {
+
+            } while (cursor.moveToNext());
+         }
+
+         cursor.close();
+         writableDb.close();
       }
 
       // END: Init validation

@@ -49,7 +49,8 @@ public class OSNotificationPayload {
    public List<ActionButton> actionButtons;
    public boolean backgroundData;
    public String fromProjectNumber;
-
+   public boolean redisplaying;
+   
    public static class ActionButton {
       public String id;
       public String text;

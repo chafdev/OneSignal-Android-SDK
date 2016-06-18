@@ -284,7 +284,7 @@ class GenerateNotification {
    }
 
    // Put the message into a notification and post it.
-   private static int showNotification(JSONObject gcmBundle, NotificationExtenderService.OverrideSettings overrideSettings) {
+   static int showNotification(JSONObject gcmBundle, NotificationExtenderService.OverrideSettings overrideSettings) {
       Random random = new Random();
 
       String group = null;

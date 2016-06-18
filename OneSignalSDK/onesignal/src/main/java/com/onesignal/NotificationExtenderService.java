@@ -41,6 +41,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.onesignal.NotificationBundleProcessor;
+
 // Designed to be extended by app developer.
 // Must add the following to the AndroidManifest.xml for this to be triggered.
 
@@ -102,28 +104,33 @@ public abstract class NotificationExtenderService extends IntentService {
       if (OneSignal.notValidOrDuplicated(this, currentExtras))
          return;
 
+      processJsonObject(NotificationBundleProcessor.bundleAsJSONObject(currentExtras), false);
+   }
+
+   void processJsonObject(JSONObject jsonObject, boolean redisplaying) {
       OSNotificationPayload notification = new OSNotificationPayload();
       try {
-         JSONObject customJson = new JSONObject(currentExtras.getString("custom"));
+         JSONObject customJson = new JSONObject(jsonObject.optString("custom"));
          notification.notificationId = customJson.optString("i");
          notification.additionalData = customJson.optJSONObject("a");
          notification.launchUrl = customJson.optString("u", null);
 
-         notification.message = currentExtras.getString("alert");
-         notification.title = currentExtras.getString("title");
-         notification.smallIcon = currentExtras.getString("sicon");
-         notification.bigPicture = currentExtras.getString("bicon");
-         notification.largeIcon = currentExtras.getString("licon");
-         notification.sound = currentExtras.getString("sound");
-         notification.group = currentExtras.getString("grp");
-         notification.groupMessage = currentExtras.getString("grp_msg");
-         notification.backgroundColor = currentExtras.getString("bgac");
-         notification.ledColor = currentExtras.getString("ledc");
-         String visibility = currentExtras.getString("vis");
+         notification.message = jsonObject.optString("alert", null);
+         notification.title = jsonObject.optString("title", null);
+         notification.smallIcon = jsonObject.optString("sicon", null);
+         notification.bigPicture = jsonObject.optString("bicon", null);
+         notification.largeIcon = jsonObject.optString("licon", null);
+         notification.sound = jsonObject.optString("sound", null);
+         notification.group = jsonObject.optString("grp", null);
+         notification.groupMessage = jsonObject.optString("grp_msg", null);
+         notification.backgroundColor = jsonObject.optString("bgac", null);
+         notification.ledColor = jsonObject.optString("ledc", null);
+         String visibility = jsonObject.optString("vis", null);
          if (visibility != null)
             notification.visibility = Integer.parseInt(visibility);
-         notification.backgroundData = "1".equals(currentExtras.getString("bgn"));
-         notification.fromProjectNumber = currentExtras.getString("from");
+         notification.backgroundData = "1".equals(jsonObject.optString("bgn", null));
+         notification.fromProjectNumber = jsonObject.optString("from", null);
+         notification.redisplaying = redisplaying;
 
          if (notification.additionalData != null && notification.additionalData.has("actionButtons")) {
             JSONArray jsonActionButtons = notification.additionalData.getJSONArray("actionButtons");
@@ -152,7 +159,7 @@ public abstract class NotificationExtenderService extends IntentService {
       catch (Throwable t) {
          //noinspection ConstantConditions - displayNotification might have been called by the developer
          if (osNotificationDisplayedResult == null)
-            OneSignal.Log(OneSignal.LOG_LEVEL.ERROR, "onNotificationProcessing throw an exception. Displaying normal OneSignal notification. ", t);
+            OneSignal.Log(OneSignal.LOG_LEVEL.ERROR, "onNotificationProcessing throw an exception. Displaying normal OneSignal notification.", t);
          else
             OneSignal.Log(OneSignal.LOG_LEVEL.ERROR, "onNotificationProcessing throw an exception. Extended notification displayed but custom processing did not finish.", t);
       }
@@ -160,8 +167,10 @@ public abstract class NotificationExtenderService extends IntentService {
       // If developer did not call displayNotification from onNotificationProcessing
       if (osNotificationDisplayedResult == null) {
          // Save as processed to prevent possible duplicate calls from canonical ids.
-         if (developerProcessed)
-            NotificationBundleProcessor.saveNotification(this, currentExtras, true, -1);
+         if (developerProcessed) {
+            if (!redisplaying)
+               NotificationBundleProcessor.saveNotification(this, currentExtras, true, -1);
+         }
          else
             NotificationBundleProcessor.Process(this, currentExtras, null);
       }
